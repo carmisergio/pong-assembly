@@ -67,6 +67,10 @@ jmp start
     paddler_y_prev dw 95     
     
     kbdstate db 128 dup(0)  ; Keyboard state buffer
+    
+    ; Score font
+    score_font  db 0F8h, 8Fh, 11h, 1Fh, ; 5 Digit
+                db 88h, 8Fh, 99h, 9Fh, ; 6 Digit
 ;
 ;------------------------------------------------------------------------------------------------------------ 
 
@@ -97,6 +101,11 @@ start:
     ; Prepare extra segment for use in addressing VRAM
     mov ax, 0A000h
     mov es, ax
+    
+    call drawscoredigit
+    
+lp:
+    jmp lp
     
     ; Field borders
     call drawfld
@@ -499,7 +508,10 @@ fillscr proc near
     xor di, di
     
     ; Set bytes to write
-    mov cx, 64000d  
+    mov cx, 64000d
+    
+    ; Clear direction flag
+    cld  
 
 fillscr_lp:
     stosb
@@ -840,7 +852,104 @@ drawpaddles proc near
     ret
 drawpaddles endp
 ;
-;------------------------------------------------------------------------------------------------------------                                                                                                                                                                                                              
+;------------------------------------------------------------------------------------------------------------
+
+;--------------------------------------------------------------------------------------------------
+; Draw score digit
+; Draws a score digit at specific position 
+; 
+drawscoredigit proc near
+    push ax
+    push bx
+    push cx
+    push dx
+    
+    ; Setup extra segment
+    mov bx, 0A000h          ; VRAM start address
+    mov es, bx
+    
+    ; Setup VRAM start offset
+    xor di, di
+    
+    ; Setup font start address
+    lea si, score_font
+    add si, 4
+    
+    ; Clear direction flag
+    cld
+    
+    xor dl, dl              ; Parts counter
+drawscoredigit_w_lp:    
+    push dx
+    lodsw                   ; Load first part of digit
+    mov bx, ax
+    
+    mov cx, 64              ; Number of bits in the loaded word
+    mov ax, 0F0Fh           ; Color of "one" pixels
+    
+    xor dl, dl              ; Count font blocks printed
+    
+    rol bx, 8
+    
+    
+    
+    ; Lines printed counter
+    xor dh, dh
+drawscoredigit_px_lp:
+
+    rol bx, 1                  ; Put first digit on the left in carry
+    jc drawscoredigit_px_one:
+    
+    add di, 4                  ; Increment si to move imaginary cursor
+    
+    jmp drawscoredigit_px_common
+    
+drawscoredigit_px_one:    
+    
+    stosw
+    stosw
+    
+drawscoredigit_px_common:    
+    inc dl
+    
+    ; Go to next line if necessary
+    cmp dl, 4
+    jl drawscoredigit_px_nonewline
+    
+    add di, 304             ; Add offset to make it go to new line
+    xor dl, dl              ; Reset counter
+    inc dh                  ; Count new line
+    
+    cmp dh, 4
+    je drawscoredigit_px_line4
+    ror bx, 4               ; Restore just printed line 
+    jmp drawscoredigit_px_nonewline
+    
+drawscoredigit_px_line4:
+    xor dh, dh
+    
+drawscoredigit_px_nonewline:
+    loop drawscoredigit_px_lp
+    
+    pop dx
+    inc dl
+    ; Checks if there are still parts of digit to print
+    cmp dl, 2
+    jge drawscoredigit_done
+    
+    jmp drawscoredigit_w_lp
+    
+drawscoredigit_done:   
+                      
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    
+    ret
+drawscoredigit endp
+;
+;------------------------------------------------------------------------------------------------------------                                                                                                                                                                                                             
 
 ; ###################################### INTERRUPT SERVICE ROUTINES
     
