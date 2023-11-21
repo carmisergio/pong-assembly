@@ -58,7 +58,7 @@ Then, burn the iso to a CD
 cdrecord -v -sao dev=/dev/sr0 cd.iso
 ```
 
-###### Floppy Disk boot
+##### Floppy Disk boot
 If you are the real deal you may want to boot from the second best storage format there is (after magnetic tape): floppy disks.
 
 To do this, you will have to find a way to get the image written directly to a disk. 
